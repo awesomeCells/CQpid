@@ -1,6 +1,8 @@
 # CQpid
 
 Plan qPCR plates in a few clicks: CQpid lays out your samples and genes on 96-well plates, works out the master-mix volumes, and prints a bench sheet for easy pipetting.
+Site is now live:
+[Open CQpid](https://awesomecells.github.io/CQpid/app/cqpid.html)
 
 ![CQpid screenshot](docs/screenshot.png)
 
