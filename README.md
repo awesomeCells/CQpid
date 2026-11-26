@@ -21,3 +21,5 @@ File format: [`spec/layout_format.md`](spec/layout_format.md).
 The volumes are for **Luna Universal qPCR Master Mix (NEB), 10 µl reactions** (5 µl Luna, 0.5 µl of pooled 10 µM primers, 1 µl template, water to 10 µl). For another mix, edit the `MIX` line near the top of `cqpid.html`.
 ## License
 MIT
+## AI disclosure
+This is a small convenience project, and all code was written by Claude Opus 5.5. I tested the app and it works for my purposes, but for obvious reasons, I cannot guarantee it works flawlessly in all scenarios. 
