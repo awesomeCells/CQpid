@@ -1,0 +1,938 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CQpid</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Cstyle%3E.arrow%7Bcolor:%2324231f%7D%40media (prefers-color-scheme:dark)%7B.arrow%7Bcolor:%23ecebe6%7D%7D%3C/style%3E%3Cg fill=%22none%22 stroke-width=%223.8%22 stroke-linecap=%22round%22%3E%3Cpath stroke=%22%23d63a3a%22 d=%22M3 54L22 54C32 54 34 46 37 33S42 12 52 12L62 12%22/%3E%3Cpath stroke=%22%23ee7d2b%22 d=%22M3 54L14 54C24 54 26 46 29 33S34 12 44 12L62 12%22/%3E%3Cpath stroke=%22%23f0b72f%22 d=%22M3 54L6 54C16 54 18 46 21 33S26 12 36 12L62 12%22/%3E%3C/g%3E%3Cg class=%22arrow%22 stroke=%22currentColor%22 fill=%22none%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M5 33L50.5 33%22 stroke-width=%223%22/%3E%3Cpath d=%22M2 28.5L6.5 33L2 37.5M7 28.5L11.5 33L7 37.5%22 stroke-width=%222.4%22/%3E%3Cpath transform=%22translate(53 33) rotate(-90) scale(.95)%22 stroke=%22none%22 fill=%22currentColor%22 d=%22M0 8L-6.6 1.4C-9.4-1.4-8.6-6.4-4.6-6.8C-2.2-7-.4-4.4 0-2.2C.4-4.4 2.2-7 4.6-6.8C8.6-6.4 9.4-1.4 6.6 1.4Z%22/%3E%3C/g%3E%3C/svg%3E">
+<style>
+:root {
+  --bg: #f8f3e8; --panel: #fffdf8; --text: #2a251d; --muted: #7a7062;
+  --line: #e6dccb; --line-strong: #d3c6b0; --frame: #8c7f6a; --accent: #c0392b; --link: #b06e0f;
+  --warn: #8a5a00; --warn-bg: #fdf3dc; --ok: #2f6b1f; --ok-bg: #eaf3de;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #1b1814; --panel: #26221c; --text: #efe8da; --muted: #b0a593;
+    --line: #3b342a; --line-strong: #53493b; --frame: #f6f1e7; --accent: #f07a5a; --link: #f0b72f;
+    --warn: #f0c46b; --warn-bg: #3b2f14; --ok: #9fd27a; --ok-bg: #22301a; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg); color: var(--text); }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { background: var(--panel); border: 1px solid var(--line-strong); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+button:hover { border-color: var(--accent); }
+button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+button.small { padding: 1px 7px; font-size: 12px; }
+button.icon { padding: 0 5px; border-color: transparent; background: transparent; color: var(--muted); }
+button.icon:hover { color: var(--text); border-color: var(--line); }
+input[type=text], input[type=number], select, textarea { background: var(--panel); border: 1px solid var(--line-strong); border-radius: 6px; padding: 3px 6px; }
+input[type=number] { width: 4em; }
+header { display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: var(--panel);
+  border-bottom: 1px solid var(--line); flex-wrap: wrap; position: sticky; top: 0; z-index: 5; }
+header h1 { font-size: 18px; margin: 0 8px 0 0; display: flex; align-items: center; gap: 7px; font-weight: 700; }
+header h1 svg { width: 28px; height: 28px; }
+header h1 .c { opacity: .38; font-weight: 500; }
+.spacer { flex: 1; }
+main { display: grid; grid-template-columns: 340px minmax(0, 1fr) 260px; gap: 14px; padding: 14px 16px; align-items: start; }
+@media (max-width: 1399px) { main { grid-template-columns: 340px minmax(0, 1fr); } #right { grid-column: 1 / -1; } }
+@media (max-width: 760px) { main { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin-bottom: 12px; }
+.panel h2 { font-size: 13px; font-weight: 600; margin: 0 0 6px; display: flex; align-items: center; gap: 6px; }
+.panel h2 .grow { flex: 1; }
+.hint { color: var(--muted); font-size: 12px; margin: 4px 0; }
+.item { display: flex; align-items: center; gap: 6px; padding: 2px 4px; border-radius: 6px; font-size: 13px; }
+.item:hover { background: var(--bg); }
+.item .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.sw { width: 12px; height: 12px; border-radius: 3px; flex: none; border: 1px solid rgba(0,0,0,.15); display: inline-block; }
+.row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 4px 0; }
+.row label { font-size: 12px; color: var(--muted); }
+.tabs { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+.tab { padding: 3px 12px; border-radius: 6px 6px 0 0; border: 1px solid var(--line); border-bottom: none; cursor: pointer; background: var(--bg); }
+.tab.on { background: var(--panel); font-weight: 600; border-color: var(--line-strong); }
+.plate-wrap { overflow-x: auto; padding: 4px; }
+.plate { display: grid; grid-template-columns: 18px repeat(12, 51px); grid-template-rows: auto repeat(8, 54px); gap: 6px; user-select: none; -webkit-user-select: none; touch-action: none; width: max-content; }
+.hdr { font-size: 11px; color: var(--muted); display: flex; align-items: center; justify-content: center; }
+.well { border-radius: 7px; border: 1px solid var(--line); background: var(--panel); cursor: crosshair;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 10.5px; line-height: 1.15; overflow: hidden; }
+.well span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 2px; }
+.well .id { font-weight: 600; }
+.well .tg { font-weight: 600; font-size: 10.5px; }
+.well.framed .tg { font-size: 11px; }
+.well.gene { border-width: 2px; border-color: var(--g); }
+@media (prefers-color-scheme: dark) { .well.gene { border-color: color-mix(in srgb, var(--g) 70%, white); } }
+.well.ctl { border-style: dashed; }
+/* one frame per cDNA, with its ID as a tab of the frame: hanging from the top edge (row strips) or a cap across it (column strips) */
+.plate .cf { pointer-events: none; margin: -2.5px; border: 2.5px solid var(--frame); border-radius: 10px; position: relative; }
+.cf .lab { position: absolute; z-index: 4; top: -2.5px; left: 6px; max-width: calc(100% - 7px); padding: 1px 6px 2px; line-height: 1.15;
+  background: var(--frame); color: var(--panel); border-radius: 0 0 6px 6px; font-weight: 700; font-size: 11px; overflow-wrap: anywhere; }
+.cf.col .lab { left: -2.5px; right: -2.5px; max-width: none; text-align: center; padding: 2px 1px; font-size: 9px; border-radius: 10px 10px 4px 4px; }
+.well.framed { justify-content: flex-end; padding-bottom: 6px; }
+.plate .well { position: relative; z-index: 1; }
+.well.sel { outline: 2px solid var(--accent); outline-offset: 1px; z-index: 3; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 8px; font-size: 12px; }
+.legend span { display: inline-flex; align-items: center; gap: 4px; }
+.checks { font-size: 12px; display: flex; flex-direction: column; gap: 4px; }
+.checks div { border-radius: 6px; padding: 4px 8px; }
+.checks .w { background: var(--warn-bg); color: var(--warn); }
+.checks .ok { background: var(--ok-bg); color: var(--ok); }
+.checks .info { background: var(--bg); color: var(--muted); }
+table.grid { border-collapse: collapse; font-size: 12px; width: 100%; }
+table.grid th, table.grid td { border: 1px solid var(--line); padding: 2px 4px; text-align: left; }
+table.grid th { background: var(--bg); font-weight: 600; }
+.mix h4 { margin: 0 0 4px; font-size: 13px; }
+.mix .step { margin: 8px 0 3px; font-weight: 600; font-size: 12px; }
+.mix table.grid { margin-bottom: 2px; }
+.mix td, .mix th { white-space: nowrap; }
+#mixBox { overflow-x: auto; }
+#mixBox .mix { display: grid; grid-template-columns: auto 1fr; column-gap: 24px; align-items: start; }
+#mixBox .mix h4, #mixBox .mix > p.hint { grid-column: 1 / -1; }
+#mixBox .mix .s1, #mixBox .mix .s2 { min-width: 0; }
+table.grid td input { width: 100%; border: none; background: transparent; padding: 1px 2px; }
+table.grid td input:focus { outline: 1px solid var(--accent); background: var(--panel); }
+table.grid td.id { font-weight: 600; white-space: nowrap; cursor: default; }
+.samples-wrap { max-height: 300px; overflow: auto; margin-top: 10px; }
+table.design td:first-child { width: 34%; }
+table.design td:last-child, #sampleTable td:last-child { width: 1%; white-space: nowrap; }
+table.design tr.new td { background: var(--bg); }
+button.big { width: 100%; margin-top: 8px; padding: 6px; font-weight: 600; }
+button.link { border: none; background: none; color: var(--link); padding: 2px 0; }
+th button.icon { font-weight: 400; }
+button.hk { font-size: 10px; padding: 0 4px; border-radius: 4px; color: var(--muted); background: transparent; border: 1px dashed var(--line-strong); }
+button.hk.on { color: #fff; background: var(--accent); border: 1px solid var(--accent); }
+#sampleTable th:first-child { white-space: nowrap; }
+#sampleTable td.add { width: auto; white-space: normal; }
+#fillPick summary { cursor: pointer; margin-bottom: 4px; }
+.checklist { max-height: 130px; overflow: auto; border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; font-size: 12px; }
+.checklist label { display: block; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg);
+  padding: 6px 14px; border-radius: 8px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 60; }
+.toast.on { opacity: .95; }
+.modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: none; align-items: center; justify-content: center; z-index: 40; }
+.modal-bg.on { display: flex; }
+.modal { background: var(--panel); border-radius: 12px; padding: 16px 18px; max-width: 560px; width: calc(100% - 32px); max-height: 85vh; overflow: auto; }
+.modal h3 { margin: 0 0 8px; font-size: 16px; }
+.modal .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+#printArea { display: none; }
+@media print {
+  :root { --panel: #fff; --bg: #fff; --text: #000; --muted: #444; --line: #888; }
+  @page { margin: 12mm; }
+  body > *:not(#printArea) { display: none !important; }
+  #printArea { display: block; color: #000; }
+  #printArea .pp { break-after: page; page-break-after: always; }
+  #printArea h3 { margin: 0 0 6px; }
+  #printArea .plate { grid-template-columns: 14px repeat(12, 50px); grid-template-rows: auto repeat(8, 52px); gap: 6px; }
+  #printArea { --frame: #6f6c63; --panel: #fff; }
+  #printArea .cf, #printArea .cf .lab { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  #printArea .well, #printArea .sw { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  #printArea .well:not(.gene) { border-color: #888; }
+  #printArea table.grid th, #printArea table.grid td { border-color: #888; background: #fff; }
+  #printArea table.grid { width: auto; margin-top: 8px; }
+  body { background: #fff; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1 title="CQpid"><svg viewBox="0 0 64 64" aria-hidden="true"><g fill="none" stroke-width="3.8" stroke-linecap="round"><path stroke="#d63a3a" d="M3 54L22 54C32 54 34 46 37 33S42 12 52 12L62 12"/><path stroke="#ee7d2b" d="M3 54L14 54C24 54 26 46 29 33S34 12 44 12L62 12"/><path stroke="#f0b72f" d="M3 54L6 54C16 54 18 46 21 33S26 12 36 12L62 12"/></g><g class="arrow" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M5 33L50.5 33" stroke-width="3"/><path d="M2 28.5L6.5 33L2 37.5M7 28.5L11.5 33L7 37.5" stroke-width="2.4"/><path transform="translate(53 33) rotate(-90) scale(.95)" stroke="none" fill="currentColor" d="M0 8L-6.6 1.4C-9.4-1.4-8.6-6.4-4.6-6.8C-2.2-7-.4-4.4 0-2.2C.4-4.4 2.2-7 4.6-6.8C8.6-6.4 9.4-1.4 6.6 1.4Z"/></g></svg><span><span class="c">C</span>Qpid</span></h1>
+  <input type="text" id="expName" placeholder="Experiment name" style="width: 220px" title="Used for file names">
+  <span class="spacer"></span>
+  <button id="btnOpen" title="Open a saved layout CSV">Open…</button>
+  <button id="btnSave" class="primary" title="Download the layout CSV (this saves the whole run)">Save layout</button>
+  <button id="btnPrint" title="Bench sheet: one page per plate">Print</button>
+  <button id="btnUndo" title="Undo (Cmd+Z)">Undo</button>
+  <button id="btnRedo" title="Redo (Shift+Cmd+Z)">Redo</button>
+  <button id="btnNew" title="Start a new layout (targets are kept)">New</button>
+  <button id="btnHelp" title="How to use">?</button>
+  <input type="file" id="fileInput" accept=".csv,text/csv" style="display:none">
+</header>
+
+<main>
+  <aside id="left">
+    <div class="panel">
+      <h2><span class="grow">1. Targets</span><button class="small" id="btnAddTarget">+ Add</button></h2>
+      <div id="targetList"></div>
+      <p class="hint">Order matters: neighbouring targets share a plate.</p>
+    </div>
+
+    <div class="panel">
+      <h2>2. Samples</h2>
+      <table class="grid design" id="designTable"></table>
+      <p class="hint" style="margin:4px 0 0">Top row changes slowest, bottom row fastest. Generate makes the sample list match these levels.</p>
+      <button class="primary big" id="btnGenSamples" title="Make the samples every combination of the levels above">Generate samples</button>
+      <div class="samples-wrap"><table class="grid" id="sampleTable"></table></div>
+    </div>
+
+    <div class="panel" id="fillPanel">
+      <h2>3. Fill plates</h2>
+      <details id="fillPick"><summary class="hint">Samples and targets: all (click to choose)</summary>
+      <div class="row"><label>Samples</label><button class="small" data-all="fillSamples">all</button><button class="small" data-none="fillSamples">none</button></div>
+      <div class="checklist" id="fillSamples"></div>
+      <div class="row"><label>Targets</label><button class="small" data-all="fillTargets">all</button><button class="small" data-none="fillTargets">none</button></div>
+      <div class="checklist" id="fillTargets"></div></details>
+      <div class="row"><label for="fillReps">Replicates</label>
+        <select id="fillReps"><option value="0">auto</option><option value="2">2</option><option value="3">3</option></select>
+        <label for="fillNTC">NTC/target</label><input type="number" id="fillNTC" min="0" max="6" value="1"></div>
+      <div class="row"><label for="fillPool">noRT pool by</label><select id="fillPool"></select></div>
+      <div class="row"><span class="hint" id="fillInfo" style="flex:1"></span><button class="primary" id="btnFill">Fill</button></div>
+      <p class="hint">Replaces all plates.</p>
+    </div>
+  </aside>
+
+  <section id="center">
+    <div class="panel">
+      <div class="tabs" id="plateTabs"></div>
+      <div class="plate-wrap"><div class="plate" id="plate"></div></div>
+      <div class="legend" id="legend"></div>
+      <div class="hint" id="status">Click or drag to select wells; Shift adds to the selection.</div>
+    </div>
+    <div class="panel"><h2>Master mix (this plate)</h2><div id="mixBox"></div></div>
+    <div class="panel" id="inspector">
+      <h2><span class="grow">Edit selected wells</span><span class="hint" id="inspWells"></span></h2>
+      <div class="row">
+        <label>Role</label><select id="inspRole"></select>
+        <label>Sample</label><select id="inspSample"></select>
+        <label>Target</label><select id="inspTarget"></select>
+        <button class="small" id="inspApply">Apply</button>
+        <button class="small" id="inspClear">Clear wells</button>
+      </div>
+    </div>
+  </section>
+
+  <aside id="right">
+    <div class="panel"><h2>Checks</h2><div class="checks" id="checks"></div></div>
+  </aside>
+</main>
+
+<div class="toast" id="toast"></div>
+<div class="modal-bg" id="modalBg"><div class="modal" id="modal"></div></div>
+<div id="printArea"></div>
+
+<script>
+"use strict";
+/* CQpid plate-layout app. One file, plain JS, works from file:// (Safari first).
+   state.targets ["gapdh", "actb", ...]                    order = plate order when filling
+   state.primers {gapdh: "P1/2", ...}                       optional primer label per target (saved as column "primer")
+   state.refs    {gapdh: true, ...}                         reference (HK) genes (saved as column "reference")
+   state.vars    ["treatment", "time", "BR"]                sample variable names (= sample table columns; Generate order outer -> inner)
+   state.levels  {treatment: "drug, ctrl", ...}              levels typed in the design table, used by Generate
+   state.samples [{id, v: {treatment: "drug", ...}}]
+   state.plates  [{id, wells: {A01: {role, sample, target, v?}}}]   96-well only; plates come from Fill.
+                 v is only set on pooled noRT wells (their variable values). */
+
+const ROLES = ["sample", "noRT", "NTC", "IPC"];
+// Reaction recipe (µl per well): Luna Universal qPCR Master Mix (NEB), 10 µl SYBR reactions. Water fills the rest. Edit here for another mix.
+const MIX = { rxn: 10, luna: 5, primer: 0.5, primerConc: "10 µM", template: 1, extra: 1.1, baseRound: 10 };
+const NROW = 8, NCOL = 12, ROW_LETTERS = "ABCDEFGH";
+const RESERVED = ["plate", "well", "role", "sample", "target", "cq", "nondetect", "outlier", "dct", "tech_rep", "reference", "efficiency", "primer", "dilution"];
+const PALETTE = [   // [fill, text, edge], earthy tones to match the logo
+  ["#dde6cf", "#2f441d", "#7f9a5c"], ["#f2dfb3", "#553a04", "#d1a032"], ["#f0d0bf", "#652814", "#c7663f"], ["#ecd2d5", "#5c2131", "#b5637a"],
+  ["#d5dee8", "#1f374f", "#6584a3"], ["#ccdedb", "#173d38", "#4e9086"], ["#e2d6e5", "#3f2449", "#8b6a9a"], ["#e6dccb", "#3e3323", "#a08a68"],
+  ["#e9e3b5", "#433f0c", "#a9a13c"], ["#f1d8c6", "#5c3211", "#c98446"], ["#d8d2e6", "#2c254f", "#7468a6"], ["#d9e3d8", "#243e2b", "#6d9474"]
+];
+
+let state = emptyState();
+const ui = { selected: new Set(), drag: null, dirty: false };
+const hist = { past: [], future: [] };
+
+function emptyState() { return { name: "", targets: [], primers: {}, refs: {}, vars: ["BR"], levels: { BR: "1, 2, 3" }, samples: [], plates: [{ id: "1", wells: {} }], active: 0 }; }
+const plate = () => state.plates[state.active];
+
+// ---------- helpers ----------
+const $ = (id) => document.getElementById(id);
+function el(tag, attrs, ...kids) {
+  const e = document.createElement(tag);
+  for (const k in attrs || {}) {
+    const a = attrs[k];
+    if (k === "class") e.className = a;
+    else if (k === "text") e.textContent = a;
+    else if (k === "style") e.style.cssText = a;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), a);
+    else if (a !== undefined && a !== null && a !== false) e.setAttribute(k, a);
+  }
+  kids.forEach((x) => { if (x !== null && x !== undefined) e.append(x); });
+  return e;
+}
+function wellId(r, c) { return ROW_LETTERS[r] + String(c + 1).padStart(2, "0"); }
+function parseWell(id) {
+  const m = /^([A-Ha-h])0*([0-9]{1,2})$/.exec(String(id).trim());
+  if (!m || +m[2] < 1 || +m[2] > NCOL) return null;
+  return wellId(ROW_LETTERS.indexOf(m[1].toUpperCase()), +m[2] - 1);
+}
+function toast(msg) {
+  const t = $("toast"); t.textContent = msg; t.classList.add("on");
+  clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove("on"), 2500);
+}
+const sampleById = (id) => state.samples.find((s) => s.id === id);
+const targetColor = (n) => { const i = state.targets.indexOf(n); return i < 0 ? null : PALETTE[i % PALETTE.length]; };
+function allWells() {
+  const out = [];
+  state.plates.forEach((p) => { for (const id in p.wells) out.push(Object.assign({ plate: p.id, well: id }, p.wells[id])); });
+  return out;
+}
+const allWellObjs = () => state.plates.flatMap((p) => Object.values(p.wells));
+const countUses = (kind, v) => allWells().filter((w) => w[kind] === v).length;
+
+// ---------- undo ----------
+function commit() {               // call BEFORE a change
+  hist.past.push(JSON.stringify(state)); if (hist.past.length > 200) hist.past.shift();
+  hist.future = []; ui.dirty = true;
+}
+function undo() {
+  if (!hist.past.length) return toast("Nothing to undo");
+  hist.future.push(JSON.stringify(state)); swapIn(hist.past.pop()); afterSwap();
+}
+function redo() {
+  if (!hist.future.length) return toast("Nothing to redo");
+  hist.past.push(JSON.stringify(state)); swapIn(hist.future.pop()); afterSwap();
+}
+function swapIn(json) { const active = state.active; state = JSON.parse(json); state.active = active; }   // undo keeps the open plate tab
+function afterSwap() { state.active = Math.min(state.active, state.plates.length - 1); ui.selected.clear(); renderAll(); }
+
+// ---------- rendering ----------
+function renderAll() {
+  renderTargets(); renderSamples(); renderTabs(); renderPlate(); renderInspector(); renderFill(); renderChecks(); renderMix();
+  $("expName").value = state.name || "";
+}
+
+function renderTargets() {
+  const box = $("targetList"); box.innerHTML = "";
+  if (!state.targets.length) box.append(el("p", { class: "hint", text: "No targets yet. + Add takes several at once." }));
+  state.targets.forEach((t, i) => {
+    const col = PALETTE[i % PALETTE.length];
+    box.append(el("div", { class: "item" },
+      el("span", { class: "sw", style: `background:${col[0]};border-color:${col[1]}` }),
+      el("span", { class: "name", title: "Rename, primers or delete", onclick: () => editTarget(i) }, t,
+        (state.primers || {})[t] ? el("span", { class: "hint", text: "  " + state.primers[t] }) : null),
+      el("button", { class: "hk" + (isRef(t) ? " on" : ""), title: "Reference (housekeeping) gene: click to toggle", text: "HK", onclick: () => toggleRef(t) }),
+      el("button", { class: "icon", title: "Move up", text: "↑", onclick: () => moveTarget(i, -1) }),
+      el("button", { class: "icon", title: "Move down", text: "↓", onclick: () => moveTarget(i, 1) }),
+      el("button", { class: "icon", title: "Rename or delete", text: "✎", onclick: () => editTarget(i) })));
+  });
+}
+
+function renderSamples() {
+  if (!state.levels) state.levels = {};
+  // design: one row per variable (outer -> inner), plus a row to add a variable
+  const dt = $("designTable"); dt.innerHTML = "";
+  dt.append(el("tr", null, el("th", { text: "Variable" }), el("th", { text: "Levels, comma-separated" }), el("th")));
+  state.vars.forEach((v, i) => dt.append(el("tr", null,
+    el("td", null, el("input", { type: "text", value: v, class: "dv", title: "Rename", onchange: (e) => renameVar(i, e.target.value) })),
+    el("td", null, el("input", { type: "text", value: state.levels[v] || "", class: "dl", placeholder: "e.g. drug, ctrl",
+      oninput: (e) => { state.levels[v] = e.target.value; genCount(); } })),
+    el("td", null, el("button", { class: "icon", title: "Move up (outer)", text: "↑", onclick: () => moveVar(i, -1) }),
+      el("button", { class: "icon", title: "Move down (inner)", text: "↓", onclick: () => moveVar(i, 1) }),
+      el("button", { class: "icon", title: "Remove variable", text: "×", onclick: () => removeVar(i) })))));
+  const nv = el("input", { type: "text", class: "dv", placeholder: "+ variable", onchange: (e) => addVar(e.target.value) });
+  dt.append(el("tr", { class: "new" }, el("td", null, nv), el("td", { class: "hint", text: "e.g. treatment" }), el("td")));
+  genCount();
+  // samples
+  const tb = $("sampleTable"); tb.innerHTML = "";
+  tb.append(el("tr", null, el("th", null, "ID ", el("button", { class: "icon", title: "Number all IDs consecutively (e.g. RNA IDs)", text: "1,2,3…", onclick: numberIds })),
+    ...state.vars.map((v) => el("th", { text: v })), el("th")));
+  state.samples.forEach((s, i) => {
+    tb.append(el("tr", null,
+      el("td", { class: "id", title: "Double-click to rename", ondblclick: () => renameSample(i) }, s.id),
+      ...state.vars.map((v) => el("td", null, el("input", { type: "text", value: s.v[v] || "",
+        onchange: (e) => { commit(); s.v[v] = e.target.value.trim(); renderFill(); renderChecks(); } }))),   // no table rebuild, so Tab works
+      el("td", null, el("button", { class: "icon", title: "Move up", text: "↑", onclick: () => moveSample(i, -1) }),
+        el("button", { class: "icon", title: "Move down", text: "↓", onclick: () => moveSample(i, 1) }),
+        el("button", { class: "icon", title: "Delete sample", text: "×", onclick: () => deleteSample(i) }))));
+  });
+  tb.append(el("tr", null, el("td", { class: "add", colspan: state.vars.length + 2 },
+    el("button", { class: "link", id: "btnAddSample", text: "+ add sample", onclick: addSample }),
+    state.samples.length ? null : el("span", { class: "hint", text: "  or fill in the levels above and Generate." }))));
+}
+function genCombos() {
+  const f = state.vars.map((v) => ({ v, l: String(state.levels[v] || "").split(",").map((x) => x.trim()).filter(Boolean) })).filter((x) => x.l.length);
+  if (!f.length) return [];
+  let combos = [{}];
+  f.forEach((x) => { combos = combos.flatMap((c) => x.l.map((l) => Object.assign({}, c, { [x.v]: l }))); });
+  return combos;
+}
+function genCount() { const n = genCombos().length; $("btnGenSamples").textContent = n ? `Generate ${n} sample${n > 1 ? "s" : ""}` : "Generate samples"; }
+// Generate makes the sample list match the levels: samples that still match keep their ID (e.g. after 1,2,3…),
+// the others are removed with their wells, and new combinations are added.
+function generateSamples() {
+  const combos = genCombos(); if (!combos.length) return toast("Type levels for at least one variable first");
+  const same = (s, c) => state.vars.every((v) => (s.v[v] || "") === (c[v] || ""));
+  const left = state.samples.slice(), kept = combos.map((c) => { const i = left.findIndex((s) => same(s, c)); return i < 0 ? null : left.splice(i, 1)[0]; });
+  const used = left.reduce((n, s) => n + countUses("sample", s.id), 0);
+  if (used && !confirm(`${left.length} sample(s) no longer match the levels and are used in ${used} well(s). Remove them and clear those wells?`)) return;
+  commit();
+  const gone = new Set(left.map((s) => s.id));
+  state.plates.forEach((p) => { for (const id in p.wells) if (gone.has(p.wells[id].sample)) delete p.wells[id]; });
+  state.samples = kept.filter(Boolean);   // so new IDs don't clash with kept ones or each other
+  let n = 0;
+  combos.forEach((c, i) => { if (!kept[i]) { kept[i] = { id: idFromValues(c, state.vars), v: c }; state.samples.push(kept[i]); n++; } });
+  state.samples = kept;
+  renderAll(); toast(`${combos.length} samples` + (n ? `, ${n} new` : "") + (left.length ? `, ${left.length} removed` : ""));
+}
+function moveSample(i, d) {
+  const j = i + d; if (j < 0 || j >= state.samples.length) return;
+  commit(); const a = state.samples; [a[i], a[j]] = [a[j], a[i]]; renderAll();
+}
+function numberIds() {
+  if (!state.samples.length) return;
+  const n = prompt("Number the samples in table order, starting at:", "1"); if (n === null) return;
+  const start = parseInt(n, 10); if (isNaN(start)) return toast("Enter a number, e.g. 101");
+  commit(); const map = {};
+  state.samples.forEach((s, i) => { map[s.id] = String(start + i); s.id = String(start + i); });
+  allWellObjs().forEach((w) => { if (w.sample in map) w.sample = map[w.sample]; });
+  renderAll(); toast(`IDs ${start}–${start + state.samples.length - 1}`);
+}
+function renderTabs() {
+  const box = $("plateTabs"); box.innerHTML = "";
+  state.plates.forEach((p, i) => box.append(el("div", { class: "tab" + (i === state.active ? " on" : ""),
+    onclick: () => { state.active = i; ui.selected.clear(); renderAll(); } }, "Plate " + p.id)));
+}
+
+// Well text: sample ID split at "-" onto short lines, then the target.
+function wellLines(w) {
+  if (w.role === "NTC") return ["NTC"];
+  if (w.role === "noRT") return ["−RT"].concat(w.sample.startsWith("noRT_") ? [w.sample.slice(5)] : w.sample.split("-"));
+  return (w.sample || "").split("-");
+}
+function wellTitle(id, w) {
+  if (!w) return id + ": empty";
+  const s = sampleById(w.sample), v = s ? s.v : w.v || {};
+  const vars = state.vars.filter((x) => v[x]).map((x) => `${x}=${v[x]}`).join(", ");
+  return `${id}: ${w.role}${w.sample ? " · " + w.sample : ""}${w.target ? " · " + w.target : ""}${vars ? " · " + vars : ""}`;
+}
+// cDNA blocks: rectangles of neighbouring sample wells with the same sample (one tube, one block).
+// Returns [row, col, height, width]; non-rectangular groups fall back to one rectangle per row run.
+function cdnaBlocks(p) {
+  const key = (r, c) => { const w = p.wells[wellId(r, c)]; return w && w.role === "sample" && w.sample ? w.sample : null; };
+  const seen = new Set(), out = [];
+  for (let r = 0; r < NROW; r++) for (let c = 0; c < NCOL; c++) {
+    const k = key(r, c); if (!k || seen.has(r * NCOL + c)) continue;
+    const comp = [], stack = [[r, c]]; seen.add(r * NCOL + c);
+    while (stack.length) {
+      const [y, x] = stack.pop(); comp.push([y, x]);
+      [[y + 1, x], [y - 1, x], [y, x + 1], [y, x - 1]].forEach(([a, b]) => {
+        if (a >= 0 && a < NROW && b >= 0 && b < NCOL && !seen.has(a * NCOL + b) && key(a, b) === k) { seen.add(a * NCOL + b); stack.push([a, b]); }
+      });
+    }
+    const ys = comp.map((q) => q[0]), xs = comp.map((q) => q[1]);
+    const r0 = Math.min(...ys), r1 = Math.max(...ys), c0 = Math.min(...xs), c1 = Math.max(...xs);
+    if (comp.length === (r1 - r0 + 1) * (c1 - c0 + 1)) out.push([r0, c0, r1 - r0 + 1, c1 - c0 + 1]);
+    else for (let y = r0; y <= r1; y++) {
+      let x = c0;
+      while (x <= c1) { if (!comp.some((q) => q[0] === y && q[1] === x)) { x++; continue; }
+        let e = x; while (e + 1 <= c1 && comp.some((q) => q[0] === y && q[1] === e + 1)) e++;
+        out.push([y, x, 1, e - x + 1]); x = e + 1; }
+    }
+  }
+  return out;
+}
+function renderPlate(box, p) {
+  const live = !box; box = box || $("plate"); p = p || plate();
+  box.innerHTML = "";
+  const at = (d, r, c) => { d.style.gridRow = r + 1; d.style.gridColumn = c + 1; return d; };   // explicit cells, so cDNA frames can overlay
+  const blocks = cdnaBlocks(p), inBlock = new Set();
+  blocks.forEach(([r0, c0, h, w]) => { for (let r = r0; r < r0 + h; r++) for (let c = c0; c < c0 + w; c++) inBlock.add(r * NCOL + c); });
+  box.append(at(el("div"), 0, 0));
+  for (let c = 0; c < NCOL; c++) box.append(at(el("div", { class: "hdr", text: String(c + 1) }), 0, c + 1));
+  for (let r = 0; r < NROW; r++) {
+    box.append(at(el("div", { class: "hdr", text: ROW_LETTERS[r] }), r + 1, 0));
+    for (let c = 0; c < NCOL; c++) {
+      const id = wellId(r, c), w = p.wells[id];
+      const d = at(el("div", { class: "well", "data-r": r, "data-c": c, title: wellTitle(id, w) }), r + 1, c + 1);
+      if (w) {
+        const col = targetColor(w.target);
+        if (col) { d.style.cssText += `;background:${col[0]};color:${col[1]};--g:${col[2]}`; d.classList.add("gene"); }
+        if (w.role !== "sample") d.classList.add("ctl");
+        // inside a cDNA frame the frame's tab names the sample, so the well shows only its gene
+        if (!inBlock.has(r * NCOL + c)) wellLines(w).forEach((x) => d.append(el("span", { class: "id", text: x })));
+        else d.classList.add("framed");
+        d.append(el("span", { class: "tg", text: w.target || "—" }));
+      }
+      if (live && ui.selected.has(id)) d.classList.add("sel");
+      box.append(d);
+    }
+  }
+  blocks.forEach(([r0, c0, h, w]) => {
+    const f = el("div", { class: "cf" + (w === 1 ? " col" : "") }, el("span", { class: "lab", text: p.wells[wellId(r0, c0)].sample.replace(/-/g, "-\u200b") }));
+    f.style.gridRow = `${r0 + 2} / span ${h}`; f.style.gridColumn = `${c0 + 2} / span ${w}`; box.append(f);
+  });
+  if (live) {
+    const lg = $("legend"); lg.innerHTML = "";
+    state.targets.forEach((t, i) => lg.append(el("span", null, el("span", { class: "sw", style: `background:${PALETTE[i % PALETTE.length][0]}` }), t)));
+  }
+}
+
+// ---------- touch-up: select wells, edit them ----------
+function cellAt(e) {
+  const t = document.elementFromPoint(e.clientX, e.clientY);
+  const w = t && t.closest ? t.closest(".well") : null;
+  return w && $("plate").contains(w) ? { r: +w.dataset.r, c: +w.dataset.c } : null;
+}
+function rectIds(a, b) {
+  const out = [];
+  for (let r = Math.min(a.r, b.r); r <= Math.max(a.r, b.r); r++)
+    for (let c = Math.min(a.c, b.c); c <= Math.max(a.c, b.c); c++) out.push(wellId(r, c));
+  return out;
+}
+function setupPlateEvents() {
+  const pl = $("plate");
+  const show = () => { ui.selected = new Set([...ui.drag.base, ...rectIds(ui.drag.start, ui.drag.end)]); renderPlate(); renderInspector(); };
+  pl.addEventListener("pointerdown", (e) => {
+    const cell = cellAt(e); if (!cell) return;
+    e.preventDefault();
+    ui.drag = { start: cell, end: cell, base: e.shiftKey || e.metaKey ? [...ui.selected] : [] };
+    try { pl.setPointerCapture(e.pointerId); } catch (_) {}
+    show();
+  });
+  pl.addEventListener("pointermove", (e) => {
+    const cell = cellAt(e);
+    if (!ui.drag) { if (cell) { const id = wellId(cell.r, cell.c); $("status").textContent = wellTitle(id, plate().wells[id]); } return; }
+    if (cell && (cell.r !== ui.drag.end.r || cell.c !== ui.drag.end.c)) { ui.drag.end = cell; show(); }
+  });
+  pl.addEventListener("pointerup", () => { ui.drag = null; });
+  pl.addEventListener("pointercancel", () => { ui.drag = null; });
+}
+function renderInspector() {
+  $("inspWells").textContent = ui.selected.size ? `${ui.selected.size} well(s)` : "none selected";
+  const fill = (sel, opts) => {
+    const cur = sel.options.length ? sel.value : "__keep"; sel.innerHTML = "";
+    opts.forEach(([v, l]) => sel.append(el("option", { value: v, text: l })));
+    sel.value = opts.some((o) => o[0] === cur) ? cur : "__keep";
+  };
+  const pools = [...new Set(allWells().filter((w) => w.role === "noRT" && !sampleById(w.sample)).map((w) => w.sample))];
+  fill($("inspRole"), [["__keep", "(keep)"]].concat(ROLES.map((r) => [r, r])));
+  fill($("inspSample"), [["__keep", "(keep)"], ["", "(none)"]].concat(state.samples.map((s) => [s.id, s.id]), pools.map((x) => [x, x])));
+  fill($("inspTarget"), [["__keep", "(keep)"], ["", "(none)"]].concat(state.targets.map((t) => [t, t])));
+}
+function inspectorApply() {
+  if (!ui.selected.size) return toast("Select wells first");
+  const p = plate(), role = $("inspRole").value, smp = $("inspSample").value, tg = $("inspTarget").value;
+  const poolV = allWells().find((w) => w.sample === smp && w.v);   // pooled noRT values travel with the well
+  commit();
+  ui.selected.forEach((id) => {
+    const w = Object.assign({ role: "sample", sample: "", target: "" }, p.wells[id]);
+    if (role !== "__keep") w.role = role;
+    if (smp !== "__keep") { w.sample = smp; delete w.v; if (poolV) w.v = Object.assign({}, poolV.v); }
+    if (tg !== "__keep") w.target = tg;
+    if (w.role === "NTC") { w.sample = ""; delete w.v; }
+    if (!w.sample && !w.target && w.role === "sample") delete p.wells[id]; else p.wells[id] = w;
+  });
+  renderAll();
+}
+function inspectorClear() {
+  if (!ui.selected.size) return toast("Select wells first");
+  commit(); ui.selected.forEach((id) => delete plate().wells[id]); renderAll();
+}
+
+// ---------- targets ----------
+function moveTarget(i, d) {
+  const j = i + d; if (j < 0 || j >= state.targets.length) return;
+  commit(); const t = state.targets; [t[i], t[j]] = [t[j], t[i]]; renderAll();
+}
+function addTargets() {
+  const box = el("textarea", { rows: 5, style: "width:100%", placeholder: "gapdh\nactb\ngeneA, geneB" });
+  modal("Add targets", el("div", null, el("p", { class: "hint", text: "One per line or comma-separated, in plate order." }), box), [["Cancel", null], ["Add", () => {
+    const names = [...new Set(box.value.split(/[\n,]/).map((x) => x.trim()).filter(Boolean))].filter((n) => !state.targets.includes(n));
+    if (!names.length) return;
+    commit(); state.targets.push(...names); renderAll();
+  }, true]]);
+  box.focus();
+}
+function isRef(t) { return !!(state.refs || {})[t]; }
+function toggleRef(t) { commit(); state.refs = state.refs || {}; if (state.refs[t]) delete state.refs[t]; else state.refs[t] = true; renderAll(); }
+function editTarget(i) {
+  const old = state.targets[i], name = el("input", { type: "text", value: old });
+  const prim = el("input", { type: "text", value: (state.primers || {})[old] || "", placeholder: "e.g. P1/2", style: "width:8em" });
+  modal("Target “" + old + "”", el("div", null, el("div", { class: "row" }, el("label", { text: "Name" }), name),
+    el("div", { class: "row" }, el("label", { text: "Primers" }), prim, el("span", { class: "hint", text: "shown in the master-mix tables" }))), [
+    ["Delete", () => {
+      const used = countUses("target", old);
+      if (used && !confirm(`${old} is used in ${used} well(s). Delete it and clear those wells' target?`)) return false;
+      commit(); state.targets.splice(i, 1); delete state.primers[old]; if (state.refs) delete state.refs[old]; allWellObjs().forEach((w) => { if (w.target === old) w.target = ""; }); renderAll();
+    }],
+    ["Cancel", null],
+    ["Save", () => {
+      const n = name.value.trim(), pr = prim.value.trim(); if (!n) return;
+      if (n !== old && (n.includes(",") || state.targets.includes(n))) { toast("Name taken or contains a comma"); return false; }
+      if (n === old && pr === (state.primers[old] || "")) return;
+      commit(); state.targets[i] = n; delete state.primers[old]; if (pr) state.primers[n] = pr;
+      if (state.refs && state.refs[old] && n !== old) { delete state.refs[old]; state.refs[n] = true; }
+      allWellObjs().forEach((w) => { if (w.target === old) w.target = n; }); renderAll();
+    }, true]]);
+  name.focus();
+}
+
+// ---------- samples ----------
+function uniqueId(base) { let id = base, k = 2; while (sampleById(id)) id = base + "_" + k++; return id; }
+function addSample() { commit(); let k = 1; while (sampleById("S" + k)) k++; state.samples.push({ id: "S" + k, v: {} }); renderAll(); }
+function deleteSample(i) {
+  const s = state.samples[i], used = countUses("sample", s.id);
+  if (used && !confirm(`${s.id} is used in ${used} well(s). Delete it and clear those wells?`)) return;
+  commit(); state.samples.splice(i, 1);
+  state.plates.forEach((p) => { for (const id in p.wells) if (p.wells[id].sample === s.id) delete p.wells[id]; });
+  renderAll();
+}
+function renameSample(i) {
+  const s = state.samples[i], n = prompt("Rename sample", s.id); if (n === null) return;
+  const v = n.trim(); if (!v || v === s.id) return;
+  if (v.includes(",")) return toast("IDs can't contain commas");
+  if (sampleById(v)) return toast("That ID already exists");
+  commit(); allWellObjs().forEach((w) => { if (w.sample === s.id) w.sample = v; }); s.id = v; renderAll();
+}
+function cleanVar(n) { return String(n || "").trim().replace(/[,\s]+/g, "_"); }
+function addVar(name) {
+  const v = cleanVar(name); if (!v) return renderSamples();
+  if (state.vars.includes(v) || RESERVED.includes(v)) { toast("That name is taken or reserved"); return renderSamples(); }
+  commit(); const b = state.vars.indexOf("BR");               // new variables go before BR (BR innermost)
+  if (b >= 0 && v !== "BR") state.vars.splice(b, 0, v); else state.vars.push(v);
+  renderAll(); const ins = $("designTable").querySelectorAll("input.dl")[state.vars.indexOf(v)]; if (ins) ins.focus();
+}
+function renameVar(i, name) {
+  const old = state.vars[i], v = cleanVar(name);
+  if (!v || v === old) return renderSamples();
+  if (state.vars.includes(v) || RESERVED.includes(v)) { toast("That name is taken or reserved"); return renderSamples(); }
+  commit(); state.vars[i] = v; state.levels[v] = state.levels[old]; delete state.levels[old];
+  state.samples.forEach((s) => { if (old in s.v) { s.v[v] = s.v[old]; delete s.v[old]; } });
+  allWellObjs().forEach((w) => { if (w.v && old in w.v) { w.v[v] = w.v[old]; delete w.v[old]; } });
+  renderAll();
+}
+function moveVar(i, d) {
+  const j = i + d; if (j < 0 || j >= state.vars.length) return;
+  commit(); const a = state.vars; [a[i], a[j]] = [a[j], a[i]]; renderAll();
+}
+function removeVar(i) {
+  const old = state.vars[i];
+  if (state.samples.some((s) => s.v[old]) && !confirm(`Remove "${old}" and its values from all samples?`)) return;
+  commit(); state.vars.splice(i, 1); delete state.levels[old]; state.samples.forEach((s) => delete s.v[old]); renderAll();
+}
+// Readable ID from the values, e.g. drug-12-1; empty and "none" values are left out (none/0/BR1 -> 0-1).
+function idFromValues(c, order) {
+  const parts = order.map((v) => String(c[v] || "").replace(/[,\s-]+/g, "")).filter((x) => x && x.toLowerCase() !== "none");
+  return uniqueId(parts.join("-") || "S");
+}
+
+// ---------- fill plates ----------
+/* Layout rule (96-well). Genes are split across plates, never samples: all samples of a gene sit on one plate.
+   A segment = all wells of one cDNA on one plate: for each gene on that plate (in target order) its replicates
+   side by side. A segment lies in one row or one column and never wraps; several may share a line.
+   Controls (noRT pool(s), then NTC) get one well per gene each and fill the segment slots after the samples,
+   each gene's controls under that gene's replicate columns.
+   Chosen automatically: genes per plate and orientation, for the fewest plates; on a tie, more genes per plate
+   (longer segments), then rows. Replicates auto = 3 unless 2 gives fewer plates. */
+function makeControls(samples, poolBy, nNTC) {
+  const c = [];
+  if (!poolBy) c.push({ role: "noRT", sample: "noRT_pool" });
+  else [...new Set(samples.map((s) => sampleById(s).v[poolBy] || "blank"))].forEach((x) =>
+    c.push({ role: "noRT", sample: "noRT_" + x, v: { [poolBy]: x === "blank" ? "" : x } }));
+  for (let k = 0; k < nNTC; k++) c.push({ role: "NTC", sample: "" });
+  return c;
+}
+function planFor(nSamples, nGenes, nCtl, reps) {
+  const need = nSamples + Math.ceil(nCtl / reps);         // segment slots needed per plate
+  let best = null;
+  for (let g = nGenes; g >= 1; g--) for (const o of ["rows", "cols"]) {
+    const len = o === "rows" ? NCOL : NROW, lines = o === "rows" ? NROW : NCOL;
+    if (g * reps > len || need > lines * Math.floor(len / (g * reps))) continue;
+    const plates = Math.ceil(nGenes / g);
+    if (!best || plates < best.plates) best = { reps, g, o, plates, fits: true };
+  }
+  if (best) return best;
+  // one gene's samples don't fit on a plate: split it by sample (needs an IPC)
+  const per = { rows: NROW * Math.floor(NCOL / reps), cols: NCOL * Math.floor(NROW / reps) };
+  const o = per.rows >= per.cols ? "rows" : "cols";
+  return { reps, g: 1, o, plates: nGenes * Math.ceil(need / per[o]), fits: false };
+}
+function layoutPlates(samples, targets, reps, poolBy, nNTC) {
+  const controls = makeControls(samples, poolBy, nNTC);
+  const plan = reps ? planFor(samples.length, targets.length, controls.length, reps)
+    : [3, 2].map((r) => planFor(samples.length, targets.length, controls.length, r)).reduce((a, b) => (b.plates < a.plates ? b : a));
+  const R = plan.reps, plates = [];
+  for (let t0 = 0; t0 < targets.length; t0 += plan.g) {
+    const genes = targets.slice(t0, t0 + plan.g), L = genes.length * R;
+    const len = plan.o === "rows" ? NCOL : NROW, perLine = Math.floor(len / L);
+    const perPlate = perLine * (plan.o === "rows" ? NROW : NCOL), first = plates.length;
+    const put = (slot, off, w) => {
+      const pi = first + Math.floor(slot / perPlate), k = slot % perPlate;
+      while (plates.length <= pi) plates.push({});
+      const line = Math.floor(k / perLine), pos = (k % perLine) * L + off;
+      plates[pi][plan.o === "rows" ? wellId(line, pos) : wellId(pos, line)] = w;
+    };
+    samples.forEach((s, k) => genes.forEach((t, j) => { for (let i = 0; i < R; i++) put(k, j * R + i, { role: "sample", sample: s, target: t }); }));
+    controls.forEach((c, q) => genes.forEach((t, j) => {
+      const w = { role: c.role, sample: c.sample, target: t }; if (c.v) w.v = Object.assign({}, c.v);
+      put(samples.length + Math.floor(q / R), j * R + q % R, w);
+    }));
+  }
+  return Object.assign(plan, { plates });
+}
+function checkedIn(id) { return [...$(id).querySelectorAll("input:checked")].map((i) => i.value); }
+function fillArgs() {
+  return [checkedIn("fillSamples"), checkedIn("fillTargets"), +$("fillReps").value, $("fillPool").value, Math.max(0, Math.floor(+$("fillNTC").value) || 0)];
+}
+function renderFill() {
+  const list = (box, items) => {
+    const prev = {}; box.querySelectorAll("input").forEach((i) => { prev[i.value] = i.checked; });
+    box.innerHTML = "";
+    if (!items.length) box.append(el("span", { class: "hint", text: "none yet" }));
+    items.forEach(([v, lab]) => { const cb = el("input", { type: "checkbox", value: v }); cb.checked = v in prev ? prev[v] : true;
+      box.append(el("label", { title: lab }, cb, " ", lab)); });
+  };
+  list($("fillSamples"), state.samples.map((s) => [s.id, s.id]));
+  list($("fillTargets"), state.targets.map((t) => [t, t]));
+  const ps = $("fillPool"), cur = ps.value; ps.innerHTML = "";
+  [["", "— (one pool)"]].concat(state.vars.map((v) => [v, v])).forEach(([v, l]) => ps.append(el("option", { value: v, text: l })));
+  ps.value = state.vars.includes(cur) ? cur : "";
+  fillInfo();
+}
+// Why Fill can't run yet, or "" when it can: say exactly what is missing.
+function fillProblem(a) {
+  if (!state.samples.length) return "No samples yet: Generate or + add sample";
+  if (!state.targets.length) return "No targets yet: + Add under Targets";
+  if (!a[0].length) return "No samples ticked under Samples and targets";
+  if (!a[1].length) return "No targets ticked under Samples and targets";
+  return "";
+}
+function fillInfo() {
+  const a = fillArgs(), ns = state.samples.length, nt = state.targets.length;
+  $("fillPick").querySelector("summary").textContent = a[0].length === ns && a[1].length === nt ? "Samples and targets: all (click to choose)"
+    : `Samples ${a[0].length} of ${ns}, targets ${a[1].length} of ${nt} (click to choose)`;
+  const why = fillProblem(a); if (why) { $("fillInfo").textContent = why; return; }
+  const L = layoutPlates(...a), n = L.plates.reduce((s, p) => s + Object.keys(p).length, 0);
+  $("fillInfo").textContent = `${n} wells, ${L.plates.length} plate${L.plates.length > 1 ? "s" : ""} · ${L.reps} reps, ` +
+    (L.fits ? `${L.g} gene${L.g > 1 ? "s" : ""} per plate` : "too many samples: a gene's samples split across plates (needs IPC)");
+}
+function runFill() {
+  const a = fillArgs();
+  const why = fillProblem(a); if (why) return toast(why);
+  const L = layoutPlates(...a);
+  commit();
+  state.plates = L.plates.map((w, k) => ({ id: String(k + 1), wells: w })); state.active = 0;
+  ui.selected.clear(); renderAll();
+  toast(`Filled ${L.plates.length} plate${L.plates.length > 1 ? "s" : ""}`);
+}
+
+// ---------- checks (warn, never block) ----------
+function renderChecks() {
+  const box = $("checks"); box.innerHTML = "";
+  const ws = allWells(), msgs = [], add = (c, t) => msgs.push([c, t]);
+  if (!ws.length) { box.append(el("div", { class: "info", text: "Empty layout." })); return; }
+  const list = (a) => a.slice(0, 6).join(", ") + (a.length > 6 ? "…" : "");
+  const at = (a) => list(a.map((w) => w.plate + ":" + w.well));
+  const noT = ws.filter((w) => !w.target); if (noT.length) add("w", `Wells without a target: ${at(noT)}`);
+  const noS = ws.filter((w) => (w.role === "sample" || w.role === "noRT") && !w.sample); if (noS.length) add("w", `Sample/noRT wells without a sample: ${at(noS)}`);
+  const sw = ws.filter((w) => w.role === "sample" && w.sample && w.target);
+  const used = [...new Set(ws.map((w) => w.target).filter(Boolean))];
+  const unkS = [...new Set(sw.filter((w) => !sampleById(w.sample)).map((w) => w.sample))]; if (unkS.length) add("w", `Samples not in the sample table: ${list(unkS)}`);
+  used.forEach((t) => {
+    const tw = ws.filter((w) => w.target === t);
+    const miss = ["noRT", "NTC"].filter((r) => !tw.some((w) => w.role === r));
+    if (miss.length) add("w", `${miss.join(" and ")} missing for gene ${t}`);
+    const byPlate = {};
+    sw.filter((w) => w.target === t).forEach((w) => (byPlate[w.plate] = byPlate[w.plate] || new Set()).add(w.sample));
+    if (Object.keys(byPlate).length > 1) add("w", `Gene ${t}: samples split across plates ${Object.keys(byPlate).join(", ")} (needs IPC)`);
+  });
+  const placed = new Set(sw.map((w) => w.sample)), tUsed = [...new Set(sw.map((w) => w.target))];
+  const gaps = [];
+  placed.forEach((s) => tUsed.forEach((t) => { if (!sw.some((w) => w.sample === s && w.target === t)) gaps.push(s + "/" + t); }));
+  if (gaps.length) add("w", `Sample/target pairs with no wells: ${list(gaps)}`);
+  const counts = {};
+  sw.forEach((w) => { const k = w.plate + "|" + w.sample + "|" + w.target; counts[k] = (counts[k] || 0) + 1; });
+  const n = Object.values(counts), mode = n.sort((a, b) => n.filter((x) => x === b).length - n.filter((x) => x === a).length)[0];
+  const odd = Object.entries(counts).filter(([, x]) => x !== mode).map(([k, x]) => k.split("|").slice(1).join("/") + ` (${x})`);
+  if (odd.length) add("info", `Most samples have ${mode} replicate(s); different: ${list(odd)}`);
+  const unplaced = state.samples.filter((s) => !placed.has(s.id)).map((s) => s.id);
+  if (unplaced.length && placed.size) add("info", `Samples not on any plate: ${list(unplaced)}`);
+  if (!used.some(isRef)) add("info", "No reference (HK) gene marked: click HK next to a target");
+  if (!msgs.length) add("ok", "No problems found.");
+  msgs.forEach(([c, t]) => box.append(el("div", { class: c, text: t })));
+}
+
+// ---------- CSV: the layout file is the saved run ----------
+function csvField(x) { x = x === undefined || x === null ? "" : String(x); return /[",\n\r]/.test(x) ? '"' + x.replace(/"/g, '""') + '"' : x; }
+function parseCSV(text) {
+  if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+  const rows = []; let row = [], f = "", q = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (q) { if (ch === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += ch; }
+    else if (ch === '"') q = true;
+    else if (ch === ",") { row.push(f); f = ""; }
+    else if (ch === "\n" || ch === "\r") { if (ch === "\r" && text[i + 1] === "\n") i++; row.push(f); rows.push(row); row = []; f = ""; }
+    else f += ch;
+  }
+  if (f !== "" || row.length) { row.push(f); rows.push(row); }
+  return rows.filter((r) => r.some((x) => x.trim() !== ""));
+}
+// Rows per plate, ordered by sample (table order), then target (list order), then well, controls last,
+// so that opening the file brings samples and targets back in the same order.
+function layoutCSV() {
+  const prim = Object.keys(state.primers || {}).length > 0, refc = Object.keys(state.refs || {}).length > 0;
+  const lines = ["#cqpid layout v1", ["plate", "well", "role", "sample", "target"].concat(prim ? ["primer"] : [], refc ? ["reference"] : [], state.vars).map(csvField).join(",")];
+  const si = (w) => { const i = state.samples.indexOf(sampleById(w.sample)); return w.role === "sample" && i >= 0 ? i : 1e6 + ROLES.indexOf(w.role); };
+  const ti = (w) => { const i = state.targets.indexOf(w.target); return i < 0 ? 1e6 : i; };
+  state.plates.forEach((p) => {
+    Object.keys(p.wells).sort((a, b) => si(p.wells[a]) - si(p.wells[b]) || ti(p.wells[a]) - ti(p.wells[b]) || (a < b ? -1 : 1)).forEach((id) => {
+      const w = p.wells[id], s = sampleById(w.sample), v = (w.role === "sample" || w.role === "noRT") ? (s ? s.v : w.v || {}) : {};
+      lines.push([p.id, id, w.role, w.sample, w.target].concat(prim ? [state.primers[w.target] || ""] : [], refc ? [isRef(w.target) ? "TRUE" : ""] : [], state.vars.map((x) => v[x] || "")).map(csvField).join(","));
+    });
+  });
+  return lines.join("\n") + "\n";
+}
+function download(name, text) {
+  const url = URL.createObjectURL(new Blob([text], { type: "text/csv;charset=utf-8" }));
+  const a = el("a", { href: url, download: name }); document.body.append(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1500);
+}
+function saveLayout() {
+  if (!allWells().length) return toast("The layout is empty");
+  const base = (state.name || "cqpid").trim().replace(/[^A-Za-z0-9._-]+/g, "_") || "cqpid";
+  download(base + "_layout.csv", layoutCSV()); ui.dirty = false; toast("Layout saved (check Downloads)");
+}
+function importText(name, text) {
+  const rows = parseCSV(text);
+  let head = 0;
+  if (rows.length && rows[0][0].startsWith("#")) {
+    const m = /cqpid layout v(\d+)/i.exec(rows[0].join(","));
+    if (m && m[1] !== "1") return toast(`${name}: layout format v${m[1]} is not supported`);
+    head = 1;
+  }
+  const cols = (rows[head] || []).map((x) => x.trim()), ix = (n) => cols.indexOf(n);
+  if (ix("well") < 0 || ix("plate") < 0 || ix("target") < 0) return toast(name + ": not a CQpid layout (needs plate, well and target columns)");
+  if (allWells().length && !confirm(`Replace the current layout with ${name}?`)) return;
+  const vars = cols.filter((c) => !["plate", "well", "role", "sample", "target", "primer", "reference", "well_input"].includes(c));
+  const ns = { targets: [], primers: {}, refs: {}, vars, samples: [], plates: [], active: 0, name: name.replace(/_layout\.csv$|\.csv$/i, "") };
+  const skipped = [], noRT = [];
+  rows.slice(head + 1).forEach((r) => {
+    const get = (n) => (ix(n) >= 0 ? (r[ix(n)] || "").trim() : "");
+    const id = parseWell(get("well"));
+    if (!id) { skipped.push(get("well")); return; }
+    const pid = get("plate") || "1";
+    let p = ns.plates.find((q) => q.id === pid); if (!p) ns.plates.push(p = { id: pid, wells: {} });
+    const sample = get("sample"), target = get("target");
+    const role = ROLES.find((x) => x.toLowerCase() === get("role").toLowerCase()) || get("role") || (target || sample ? "sample" : "empty");
+    if (role === "empty") return;
+    const w = p.wells[id] = { role, sample, target };
+    const v = {}; vars.forEach((x) => { if (get(x)) v[x] = get(x); });
+    if (role === "sample" && sample && !ns.samples.some((s) => s.id === sample)) ns.samples.push({ id: sample, v });
+    if (role === "noRT") noRT.push([w, v]);
+    if (target && !ns.targets.includes(target)) ns.targets.push(target);
+    if (target && get("primer")) ns.primers[target] = get("primer");
+    if (target && /^(true|t|1|yes)$/i.test(get("reference"))) ns.refs[target] = true;
+  });
+  noRT.forEach(([w, v]) => { if (Object.keys(v).length && !ns.samples.some((s) => s.id === w.sample)) w.v = v; });   // pooled noRT keeps its values
+  if (!ns.plates.length) ns.plates.push({ id: "1", wells: {} });
+  ns.levels = {}; vars.forEach((v) => { ns.levels[v] = [...new Set(ns.samples.map((x) => x.v[v] || "").filter(Boolean))].join(", "); });
+  commit(); state = ns; ui.selected.clear(); renderAll();
+  toast(`Opened ${name}: ${allWells().length} wells on ${state.plates.length} plate(s)` + (skipped.length ? `; ${skipped.length} wells outside a 96-well plate skipped` : ""));
+}
+
+// ---------- master mix: two-step, per plate ----------
+// Step 1: base mix (Luna + water) for the whole plate. Step 2: per gene, base mix + primer pool.
+// Gene mix covers wells x 1.1 (rounded up); base mix covers all gene mixes x 1.1, rounded up to 10 reactions.
+const vol = (x) => String(Math.round(x * 10) / 10) + " µl";
+function mixPlan(p) {
+  const ws = Object.entries(p.wells), genes = state.targets.filter((t) => ws.some(([, w]) => w.target === t));
+  ws.forEach(([, w]) => { if (w.target && !genes.includes(w.target)) genes.push(w.target); });
+  const water = MIX.rxn - MIX.luna - MIX.primer - MIX.template, base = MIX.luna + water;
+  const g = genes.map((t) => { const ids = ws.filter(([, w]) => w.target === t).map(([id]) => id), n = Math.ceil(ids.length * MIX.extra - 1e-9);
+    return { t, ids, n, base: n * base, primer: n * MIX.primer }; });
+  const nb = Math.ceil(g.reduce((a, x) => a + x.n, 0) * MIX.extra / MIX.baseRound - 1e-9) * MIX.baseRound;
+  return { genes: g, nb, luna: nb * MIX.luna, water: nb * water, wells: ws.length };
+}
+function whereOf(ids) {
+  const uniq = (a) => [...new Set(a)].sort((x, y) => x - y);
+  const rs = uniq(ids.map((id) => ROW_LETTERS.indexOf(id[0]))), cs = uniq(ids.map((id) => +id.slice(1)));
+  return cs.length <= rs.length ? "cols " + ranges(cs) : "rows " + ranges(rs).replace(/\d+/g, (x) => ROW_LETTERS[x]);
+}
+function mixTables(p) {
+  const m = mixPlan(p); if (!m.genes.length) return el("p", { class: "hint", text: "Empty plate." });
+  const tr = (cells, bold) => el("tr", null, ...cells.map((c) => el("td", null, bold ? el("b", { text: c }) : c)));
+  const th = (hs) => el("tr", null, ...hs.map((h) => el("th", { text: h })));
+  const sw = (t) => { const c = targetColor(t); return c ? el("span", { class: "sw", style: `background:${c[0]};margin-right:4px` }) : null; };
+  return el("div", { class: "mix" },
+    el("h4", { text: `Plate ${p.id} (${m.genes.map((x) => x.t).join(", ")})` }),
+    el("div", { class: "s1" }, el("p", { class: "step", text: "Step 1 – base mix" }),
+    el("table", { class: "grid" }, th(["Component", "Volume"]),
+      tr(["Luna Master Mix", vol(m.luna)]), tr(["Water", vol(m.water)]), tr(["Total", vol(m.luna + m.water)], true))),
+    el("div", { class: "s2" }, el("p", { class: "step", text: "Step 2 – gene mixes" }),
+    el("table", { class: "grid" }, th(["Gene", "Base mix", `Primers (${MIX.primerConc})`, "Total", "Wells"]),
+      ...m.genes.map((x) => el("tr", null, el("td", null, sw(x.t), x.t + (isRef(x.t) ? " (HK)" : "")), el("td", { text: vol(x.base) }),
+        el("td", { text: vol(x.primer) + ((state.primers || {})[x.t] ? " " + state.primers[x.t] : "") }),
+        el("td", { text: vol(x.base + x.primer) }), el("td", { class: "wells", text: `${x.ids.length} · ${whereOf(x.ids)}` }))))),
+    el("p", { class: "hint", text: `Recipe for Luna Universal qPCR Master Mix (NEB), ${MIX.rxn} µl reactions. Per well: ${MIX.rxn - MIX.template} µl gene mix + ${MIX.template} µl cDNA, noRT pool or water (NTC). ` +
+      `Gene mixes cover wells + 10% (rounded up); base mix covers ${m.nb} reactions (all gene mixes + ~10%).` }));
+}
+function renderMix() { const b = $("mixBox"); b.innerHTML = ""; b.append(mixTables(plate())); }
+
+// ---------- print: one page per plate + sample key ----------
+function ranges(ns) {    // [1,2,3,7,8,9] -> "1–3, 7–9"
+  const out = [];
+  ns.forEach((n, i) => { if (i && n === ns[i - 1] + 1) out[out.length - 1][1] = n; else out.push([n, n]); });
+  return out.map(([a, b]) => (a === b ? a : a + "–" + b)).join(", ");
+}
+function printPlates() {
+  const area = $("printArea"); area.innerHTML = "";
+  state.plates.forEach((p) => {
+    const ws = Object.entries(p.wells); if (!ws.length) return;
+    const g = el("div", { class: "plate" }); renderPlate(g, p);
+    area.append(el("div", { class: "pp" }, el("h3", { text: `${state.name || "CQpid layout"} · plate ${p.id}` }), g, mixTables(p),
+      el("p", { class: "hint", text: `${ws.length} wells · printed ${new Date().toLocaleString()}` })));
+  });
+  if (!area.children.length) return toast("Nothing to print");
+  if (state.samples.length) area.append(el("div", null, el("h3", { text: "Sample key" }),
+    el("table", { class: "grid" }, el("tr", null, el("th", { text: "sample" }), ...state.vars.map((v) => el("th", { text: v }))),
+      ...state.samples.map((s) => el("tr", null, el("td", { text: s.id }), ...state.vars.map((v) => el("td", { text: s.v[v] || "" })))))));
+  window.print();
+}
+
+// ---------- modal, help ----------
+function modal(title, body, actions) {
+  const m = $("modal"); m.innerHTML = "";
+  const bar = el("div", { class: "actions" });
+  actions.forEach(([label, fn, primary]) => bar.append(el("button", { class: primary ? "primary" : "", text: label,
+    onclick: () => { if (fn && fn() === false) return; $("modalBg").classList.remove("on"); } })));
+  m.append(el("h3", { text: title }), body, bar);
+  $("modalBg").classList.add("on");
+  m.onkeydown = (e) => { if (e.key === "Enter" && e.target.tagName === "INPUT") { const p = bar.querySelector(".primary"); if (p) p.click(); } };
+}
+function help() {
+  const p = (t) => el("p", { text: t });
+  modal("How to use CQpid", el("div", null,
+    p("1. Targets: + Add takes several names (one per line or comma-separated). Order them with ↑ ↓; neighbouring targets share a plate."),
+    p("2. Samples: type the variables and their levels in the small table (BR 1, 2, 3 is there already), then Generate: the sample list becomes every combination (samples that still match keep their IDs; others are removed). Extra samples outside the design: + add sample. IDs are built from the values; 1,2,3… numbers them, double-click renames one."),
+    p("3. Fill: each cDNA gets its wells in one row or column (all genes on that plate, replicates side by side); controls follow. All samples of a gene go on one plate, so plate differences cancel when comparing samples. Plates, orientation and replicates (3 unless 2 saves a plate) are chosen automatically."),
+    p("Touch up: click or drag on the plate to select wells, then set role, sample or target below the plate."),
+    p("Save layout downloads a CSV of the plates (Open… restores them with their targets and samples). Print gives one page per plate with its master mix, plus a sample key."),
+    p("Undo/redo: Cmd+Z, Shift+Cmd+Z.")), [["Close", null, true]]);
+}
+
+// ---------- startup ----------
+function setup() {
+  const on = (id, fn) => { $(id).onclick = fn; };
+  on("btnOpen", () => $("fileInput").click());
+  $("fileInput").onchange = (e) => { const f = e.target.files[0]; if (f) { const fr = new FileReader(); fr.onload = () => importText(f.name, String(fr.result)); fr.readAsText(f); } e.target.value = ""; };
+  on("btnSave", saveLayout); on("btnPrint", printPlates); on("btnUndo", undo); on("btnRedo", redo); on("btnHelp", help);
+  on("btnNew", () => {
+    if (allWells().length && !confirm("Start a new layout? Targets are kept.")) return;
+    commit(); const t = state.targets, pr = state.primers, rf = state.refs; state = emptyState(); state.targets = t; state.primers = pr || {}; state.refs = rf || {}; ui.selected.clear(); renderAll();
+  });
+  on("btnAddTarget", addTargets); on("btnGenSamples", generateSamples);
+  on("btnFill", runFill); on("inspApply", inspectorApply); on("inspClear", inspectorClear);
+  $("expName").onchange = (e) => { const n = e.target.value.trim(); if (n !== (state.name || "")) { commit(); state.name = n; } };
+  document.querySelectorAll("[data-all],[data-none]").forEach((b) => b.onclick = () => {
+    $(b.dataset.all || b.dataset.none).querySelectorAll("input").forEach((i) => { i.checked = !!b.dataset.all; }); fillInfo();
+  });
+  $("fillPanel").addEventListener("input", fillInfo); $("fillPanel").addEventListener("change", fillInfo);
+  $("modalBg").addEventListener("click", (e) => { if (e.target === $("modalBg")) $("modalBg").classList.remove("on"); });
+  setupPlateEvents();
+  document.addEventListener("keydown", (e) => {
+    const typing = /INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName) || $("modalBg").classList.contains("on");
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z" && !typing) { e.preventDefault(); e.shiftKey ? redo() : undo(); }
+    else if (e.key === "Escape") { $("modalBg").classList.remove("on"); ui.selected.clear(); renderPlate(); renderInspector(); }
+  });
+  window.addEventListener("beforeunload", (e) => { if (ui.dirty) { e.preventDefault(); e.returnValue = ""; } });
+  renderAll();
+}
+setup();
+</script>
+</body>
+</html>
