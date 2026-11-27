@@ -513,9 +513,11 @@ function inspectorApply() {
     if (smp !== "__keep") { w.sample = smp; delete w.v; if (poolV) w.v = Object.assign({}, poolV.v); }
     if (tg !== "__keep") w.target = tg;
     if (w.role === "NTC") { w.sample = ""; delete w.v; }
+    if (w.role !== "std") delete w.dilution;
     if (!w.sample && !w.target && w.role === "sample") delete p.wells[id]; else p.wells[id] = w;
   });
   renderAll();
+  ["inspRole", "inspSample", "inspTarget"].forEach((x) => { $(x).value = "__keep"; });   // so the next Apply changes only what is picked again
 }
 function inspectorClear() {
   if (!ui.selected.size) return toast("Select wells first");
@@ -758,20 +760,21 @@ function parseCSV(text) {
     else if (ch === "\n" || ch === "\r") { if (ch === "\r" && text[i + 1] === "\n") i++; row.push(f); rows.push(row); row = []; f = ""; }
     else f += ch;
   }
+  if (q) return null;   // a quote was never closed: the rest of the file would end up in one cell
   if (f !== "" || row.length) { row.push(f); rows.push(row); }
   return rows.filter((r) => r.some((x) => x.trim() !== ""));
 }
 // Rows per plate, ordered by sample (table order), then target (list order), then well, controls last,
 // so that opening the file brings samples and targets back in the same order.
 function layoutCSV() {
-  const prim = Object.keys(state.primers || {}).length > 0, refc = Object.keys(state.refs || {}).length > 0;
-  const lines = ["#cqpid layout v1", ["plate", "well", "role", "sample", "target"].concat(prim ? ["primer"] : [], refc ? ["reference"] : [], state.vars).map(csvField).join(",")];
+  const prim = Object.keys(state.primers || {}).length > 0, refc = Object.keys(state.refs || {}).length > 0, dil = allWellObjs().some((w) => w.dilution);
+  const lines = ["#cqpid layout v1", ["plate", "well", "role", "sample", "target"].concat(dil ? ["dilution"] : [], prim ? ["primer"] : [], refc ? ["reference"] : [], state.vars).map(csvField).join(",")];
   const si = (w) => { const i = state.samples.indexOf(sampleById(w.sample)); return w.role === "sample" && i >= 0 ? i : 1e6 + ROLES.indexOf(w.role); };
   const ti = (w) => { const i = state.targets.indexOf(w.target); return i < 0 ? 1e6 : i; };
   state.plates.forEach((p) => {
     Object.keys(p.wells).sort((a, b) => si(p.wells[a]) - si(p.wells[b]) || ti(p.wells[a]) - ti(p.wells[b]) || (a < b ? -1 : 1)).forEach((id) => {
       const w = p.wells[id], s = sampleById(w.sample), v = (w.role === "sample" || w.role === "noRT") ? (s ? s.v : w.v || {}) : {};
-      lines.push([p.id, id, w.role, w.sample, w.target].concat(prim ? [state.primers[w.target] || ""] : [], refc ? [isRef(w.target) ? "TRUE" : ""] : [], state.vars.map((x) => v[x] || "")).map(csvField).join(","));
+      lines.push([p.id, id, w.role, w.sample, w.target].concat(dil ? [w.dilution || ""] : [], prim ? [state.primers[w.target] || ""] : [], refc ? [isRef(w.target) ? "TRUE" : ""] : [], state.vars.map((x) => v[x] || "")).map(csvField).join(","));
     });
   });
   return lines.join("\n") + "\n";
@@ -786,8 +789,10 @@ function saveLayout() {
   const base = (state.name || "cqpid").trim().replace(/[^A-Za-z0-9._-]+/g, "_") || "cqpid";
   download(base + "_layout.csv", layoutCSV()); ui.dirty = false; toast("Layout saved (check Downloads)");
 }
+// Opening checks the whole file first; a file that breaks the format is refused and the current layout stays.
 function importText(name, text) {
   const rows = parseCSV(text);
+  if (!rows) return toast(`${name}: a quote (") is never closed; not opened`);
   let head = 0;
   if (rows.length && rows[0][0].startsWith("#")) {
     const m = /cqpid layout v(\d+)/i.exec(rows[0].join(","));
@@ -795,21 +800,22 @@ function importText(name, text) {
     head = 1;
   }
   const cols = (rows[head] || []).map((x) => x.trim()), ix = (n) => cols.indexOf(n);
-  if (ix("well") < 0 || ix("plate") < 0 || ix("target") < 0) return toast(name + ": not a CQpid layout (needs plate, well and target columns)");
-  if (allWells().length && !confirm(`Replace the current layout with ${name}?`)) return;
-  const vars = cols.filter((c) => !["plate", "well", "role", "sample", "target", "primer", "reference", "well_input"].includes(c));
+  if (["plate", "well", "role", "target"].some((c) => ix(c) < 0)) return toast(name + ": not a CQpid layout (needs plate, well, role and target columns)");
+  const vars = cols.filter((c) => !["plate", "well", "role", "sample", "target", "primer", "reference", "dilution", "well_input"].includes(c));
   const ns = { targets: [], primers: {}, refs: {}, vars, samples: [], plates: [], active: 0, name: name.replace(/_layout\.csv$|\.csv$/i, "") };
-  const skipped = [], noRT = [];
+  const skipped = [], noRT = [], seen = new Set(), dup = [], badRole = [];
   rows.slice(head + 1).forEach((r) => {
     const get = (n) => (ix(n) >= 0 ? (r[ix(n)] || "").trim() : "");
     const id = parseWell(get("well"));
     if (!id) { skipped.push(get("well")); return; }
-    const pid = get("plate") || "1";
+    const pid = get("plate") || "1", sample = get("sample"), target = get("target");
+    if (seen.has(pid + ":" + id)) dup.push(pid + ":" + id); seen.add(pid + ":" + id);
+    const role = ROLES.concat(["std", "empty"]).find((x) => x.toLowerCase() === get("role").toLowerCase()) || (!get("role") && !target && !sample ? "empty" : null);
+    if (!role) { badRole.push(`${pid}:${id} "${get("role")}"`); return; }
     let p = ns.plates.find((q) => q.id === pid); if (!p) ns.plates.push(p = { id: pid, wells: {} });
-    const sample = get("sample"), target = get("target");
-    const role = ROLES.find((x) => x.toLowerCase() === get("role").toLowerCase()) || get("role") || (target || sample ? "sample" : "empty");
     if (role === "empty") return;
     const w = p.wells[id] = { role, sample, target };
+    if (role === "std" && get("dilution")) w.dilution = get("dilution");
     const v = {}; vars.forEach((x) => { if (get(x)) v[x] = get(x); });
     if (role === "sample" && sample && !ns.samples.some((s) => s.id === sample)) ns.samples.push({ id: sample, v });
     if (role === "noRT") noRT.push([w, v]);
@@ -817,6 +823,10 @@ function importText(name, text) {
     if (target && get("primer")) ns.primers[target] = get("primer");
     if (target && /^(true|t|1|yes)$/i.test(get("reference"))) ns.refs[target] = true;
   });
+  const few = (a) => a.slice(0, 4).join(", ") + (a.length > 4 ? ` and ${a.length - 4} more` : "");
+  if (dup.length) return toast(`${name}: wells listed twice (${few(dup)}); not opened`);
+  if (badRole.length) return toast(`${name}: unknown or missing role (${few(badRole)}); not opened`);
+  if (allWells().length && !confirm(`Replace the current layout with ${name}?`)) return;
   noRT.forEach(([w, v]) => { if (Object.keys(v).length && !ns.samples.some((s) => s.id === w.sample)) w.v = v; });   // pooled noRT keeps its values
   if (!ns.plates.length) ns.plates.push({ id: "1", wells: {} });
   ns.levels = {}; vars.forEach((v) => { ns.levels[v] = [...new Set(ns.samples.map((x) => x.v[v] || "").filter(Boolean))].join(", "); });
