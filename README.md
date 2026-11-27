@@ -1,13 +1,12 @@
 # CQpid
 
 Plan qPCR plates in a few clicks: CQpid lays out your samples and genes on 96-well plates, works out the master-mix volumes, and prints a bench sheet for easy pipetting.
-Site is now live:
 [Open CQpid](https://awesomecells.github.io/CQpid/app/cqpid.html)
 
 ![CQpid screenshot](docs/screenshot.png)
 
 ## How to use
-Either download the html or access at (tbd).
+Use it online at the link above, or download `app/cqpid.html` and open it in Safari (works offline).
 1. **Targets:** add your target genes (primers); mark reference genes with **HK** flag.
 2. **Samples:** type your variables and levels (e.g. treatment `ctrl, drug`, time `12, 24`; biological replicates 1–3 are pre-filled), then **Generate**.
 	1. If your samples already are in some specific order, use that order for creating samples.
