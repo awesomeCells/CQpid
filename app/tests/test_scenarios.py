@@ -285,13 +285,13 @@ def s_roundtrip(b):
 def s_import(b):
     a = App(b)
     cases = {
-        "minimal": ("plate,well,target\n1,A1,gapdh\n1,a2,gapdh\n1,B01,actb\n", 3),
+        "minimal": ("plate,well,role,target\n1,A1,sample,gapdh\n1,a2,sample,gapdh\n1,B01,ntc,actb\n", 3),
         "roles": ("plate,well,role,sample,target\n1,A1,SAMPLE,S1,g\n1,A2,nort,S1,g\n1,A3,ntc,,g\n1,A4,empty,,\n", 3),
-        "crlf+bom": ("﻿plate,well,sample,target,BR\r\n1,A01,S1,g,1\r\n1,A02,S2,g,2\r\n", 2),
-        "384 wells": ("plate,well,target\n1,A01,g\n1,P24,g\n1,M13,g\n", 1),
-        "duplicate well": ("plate,well,sample,target\n1,A01,S1,g\n1,A01,S2,g\n", 1),
-        "blank lines": ("plate,well,target\n\n1,A01,g\n,,\n", 1),
-        "unknown role": ("plate,well,role,sample,target\n1,A01,weird,S1,g\n", 1),
+        "crlf+bom": ("\ufeffplate,well,role,sample,target,BR\r\n1,A01,sample,S1,g,1\r\n1,A02,sample,S2,g,2\r\n", 2),
+        "384 wells": ("plate,well,role,target\n1,A01,sample,g\n1,P24,sample,g\n1,M13,sample,g\n", 1),
+        "blank lines": ("plate,well,role,target\n\n1,A01,sample,g\n,,,\n", 1),
+        "empty role on an empty well": ("plate,well,role,sample,target\n1,A01,sample,S1,g\n1,A02,,,\n", 1),
+        "quoted comma": ('plate,well,role,sample,target\n1,A01,sample,"S1, left",g\n', 1),
     }
     for name, (text, nwells) in cases.items():
         a.js("([n, t]) => importText(n, t)", [name + ".csv", text])
@@ -299,12 +299,26 @@ def s_import(b):
         a.inv(f"open {name}")
     before = a.state()
     bad = {"v2": "#cqpid layout v2\nplate,well,target\n1,A1,g\n", "no target column": "plate,well\n1,A1\n",
-           "empty": "", "semicolons": "plate;well;target\n1;A1;g\n", "garbage": "\x00\x01PK\x03\x04 binary"}
+           "empty": "", "semicolons": "plate;well;target\n1;A1;g\n", "garbage": "\x00\x01PK\x03\x04 binary",
+           "no role column": "plate,well,sample,target\n1,A01,S1,g\n1,A02,,g\n",
+           "duplicate well": "plate,well,role,sample,target\n1,A01,sample,S1,g\n1,A1,NTC,,g\n",
+           "unclosed quote": 'plate,well,role,sample,target\n1,A01,sample,S1,g\n1,A02,sample,S1,"geneB\n1,A03,sample,S1,g\n',
+           "unknown role": "plate,well,role,sample,target\n1,A01,weird,S1,g\n",
+           "missing role": "plate,well,role,sample,target\n1,A01,,S1,g\n"}
     for name, text in bad.items():
         a.js("([n, t]) => importText(n, t)", [name + ".csv", text])
         check(a.state() == before, f"open {name}: layout changed")
         check(a.toast(), f"open {name}: no message")
         a.inv(f"open {name}")
+    # std wells keep their dilution through open -> save -> open, and dilution is not a sample variable
+    std = "#cqpid layout v1\nplate,well,role,sample,target,dilution\n1,A01,std,pool1,g,1\n1,B01,std,pool1,g,10\n1,C01,std,pool1,g,100\n1,H01,NTC,,g,\n"
+    a.js("([n, t]) => importText(n, t)", ["std.csv", std])
+    check(a.js("state.vars") == [], f"dilution is not a variable: {a.js('state.vars')}")
+    out = a.js("layoutCSV()")
+    check(out == std, "std layout saves unchanged:\n" + out)
+    a.js("() => { ui.selected = new Set(['A01']); renderInspector(); $('inspRole').value = 'sample'; inspectorApply(); }")
+    check("dilution" not in a.js("plate().wells.A01"), "dilution dropped when a well stops being std")
+    a.inv("std round trip")
     a.close()
 
 
@@ -354,6 +368,14 @@ def s_touchup(b):
     a.page.click("#inspApply"); check(a.js("plate().wells.H12 && plate().wells.H12.sample") == "S1", "fill an empty well")
     a.page.click("#inspClear"); check(not a.js("plate().wells.H12"), "clear a well")
     a.page.keyboard.press("Escape"); check(a.js("ui.selected.size") == 0, "Escape clears the selection")
+    # after Apply the inspector goes back to (keep): the next edit changes only what is picked again
+    a.page.locator("#plate .well[data-r='0'][data-c='0']").click()
+    a.page.select_option("#inspRole", "NTC"); a.page.click("#inspApply")
+    check(all(a.page.eval_on_selector(f"#{x}", "s => s.value") == "__keep" for x in ["inspRole", "inspSample", "inspTarget"]), "inspector back to (keep) after Apply")
+    w = a.js("plate().wells.A04"); a.page.locator("#plate .well[data-r='0'][data-c='3']").click()
+    a.page.select_option("#inspTarget", "gapdh"); a.page.click("#inspApply")
+    w2 = a.js("plate().wells.A04")
+    check(w2["role"] == w["role"] and w2["sample"] == w["sample"] and w2["target"] == "gapdh", f"target-only edit keeps role and sample: {w} -> {w2}")
     a.inv("touch-up"); a.close()
 
 
@@ -397,7 +419,7 @@ def s_misc(b):
     check(s["targets"] == ["GAPDH", "actb"] and not s["samples"] and not a.js("allWells().length"), "New keeps targets only")
     a.page.click("#btnUndo"); check(a.js("allWells().length") > 0, "undo New")
     before = a.state()
-    a.js("([n, t]) => importText(n, t)", ["other.csv", "plate,well,target\n1,A1,x\n"])
+    a.js("([n, t]) => importText(n, t)", ["other.csv", "plate,well,role,target\n1,A1,sample,x\n"])
     a.page.click("#btnUndo"); check(a.state()["plates"] == before["plates"], "undo after Open restores the layout")
     a.setup(["g1", "g2", "g3", "g4", "g5"], [(f"S{i}", {"t": ["0", "", "12"][i % 3]}) for i in range(30)], ["t"])
     a.fill(pool="t")
