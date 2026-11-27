@@ -152,13 +152,12 @@ button.hk.on { color: #fff; background: var(--accent); border: 1px solid var(--a
     <div class="panel">
       <h2><span class="grow">1. Targets</span><button class="small" id="btnAddTarget">+ Add</button></h2>
       <div id="targetList"></div>
-      <p class="hint">Order matters: neighbouring targets share a plate.</p>
     </div>
 
     <div class="panel">
       <h2>2. Samples</h2>
       <table class="grid design" id="designTable"></table>
-      <p class="hint" style="margin:4px 0 0">Top row changes slowest, bottom row fastest. Generate makes the sample list match these levels.</p>
+      <p class="hint" style="margin:4px 0 0">add your variables and levels, then hit "generate" to auto-generate all combinations.</p>
       <button class="primary big" id="btnGenSamples" title="Make the samples every combination of the levels above">Generate samples</button>
       <div class="samples-wrap"><table class="grid" id="sampleTable"></table></div>
     </div>
@@ -297,7 +296,7 @@ function renderAll() {
 
 function renderTargets() {
   const box = $("targetList"); box.innerHTML = "";
-  if (!state.targets.length) box.append(el("p", { class: "hint", text: "No targets yet. + Add takes several at once." }));
+  if (!state.targets.length) box.append(el("p", { class: "hint", text: "No targets yet." }));
   state.targets.forEach((t, i) => {
     const col = PALETTE[i % PALETTE.length];
     box.append(el("div", { class: "item" },
